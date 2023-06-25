@@ -1,0 +1,7 @@
+tabulate
+modAL-python
+numpy
+pandas
+scikit-learn
+scikit-learn-extra
+pyinstaller
