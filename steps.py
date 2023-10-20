@@ -9,7 +9,6 @@ import numpy as np
 from sklearn_extra.cluster import KMedoids
 from sklearn.preprocessing import StandardScaler
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.model_selection import KFold
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
@@ -85,7 +84,7 @@ def get_specialist_name():
     return specialist
 
 
-def creating_initial_pool_test(initial_size, test_size, seed=42):
+def creating_initial_pool_test(initial_size, test_size):
 
     initial_path = abs_base_path('datasets/initial.csv')
     pool_path = abs_base_path('datasets/pool.csv')
@@ -127,13 +126,13 @@ def creating_initial_pool_test(initial_size, test_size, seed=42):
         vulns['vendor'] = vulns['vendor'].apply(
             lambda val: val[0] if val[0] in TOP_10_VENDORS else 'other')
 
-        vulns = vulns.sample(frac=1, random_state=seed)
+        vulns = vulns.sample(frac=1)
 
         # assigning context data to vulnerabilities
 
         vulns = assign_ctx_info(vulns)
 
-        # selecting test dataset
+        # selecting pool and test dataset
 
         pool = vulns.iloc[test_size:, :]
         test = vulns.iloc[:test_size, :]
@@ -185,7 +184,9 @@ def initial_test_labelling(specialist_name):
         for _, row in input_csv.iterrows():
             clear_window()
 
-            print(f'{output_csv.shape[0] + 1}/{max_size} labelled in {name}.csv')
+            print('-' * 100)
+            print(f'{name.upper()} DATASET LABELLING ({output_csv.shape[0] + 1}/{max_size})')
+            print('-' * 100)
 
             label = get_answer(row)
 
@@ -194,7 +195,7 @@ def initial_test_labelling(specialist_name):
 
 
 def active_learning_labelling(
-        specialist_name, model_name, al_query_strategy, number_queries):
+        specialist_name, model_name, query_strategy, number_queries):
 
     pool_csv_path = abs_base_path('datasets/pool.csv')
     initial_csv_path = abs_results_path(f'{specialist_name}/datasets/initial-labelled.csv')
@@ -242,33 +243,47 @@ def active_learning_labelling(
     X_selected = np.r_[X_initial, X_active_labelled]
     y_selected = np.r_[y_initial, y_active_labelled]
 
-    base_stimator = get_estimator(model_name)
-    query_strategy = get_query_strategy(al_query_strategy)
-
     n_queries_left = number_queries - len(X_active_labelled)
 
+    def get_learner(model_name, query_strategy, X_train, y_train):
+
+        arr = y_train.tolist()
+        arr = [arr.count(x) for x in [0., 1., 2., 3.]]
+        split = False if min(arr) < 5 else True
+
+        if split:
+            calibrated = CalibratedClassifierCV(
+                estimator=get_estimator(model_name), method='isotonic', cv=5)
+            calibrated.fit(X_train, y_train)
+
+            learner = ActiveLearner(
+                estimator=calibrated,
+                query_strategy=get_query_strategy(query_strategy))
+        else:
+            learner = ActiveLearner(
+                estimator=get_estimator(model_name),
+                query_strategy=get_query_strategy(query_strategy),
+                X_training=X_train, y_training=y_train)
+
+        return learner
+
     for _ in range(n_queries_left):
-        try:
-            calibrated = CalibratedClassifierCV(base_stimator, method='isotonic', cv=5)
-            calibrated.fit(X_selected, y_selected)
-        except ValueError:
-            try:
-                kfold = KFold(n_splits=2).split(X_selected)
-                calibrated = CalibratedClassifierCV(base_stimator, method='isotonic', cv=kfold)
-                calibrated.fit(X_selected, y_selected)
-            except ValueError:
-                print('Not enough samples to perform cross-validation.')
 
-        learner = ActiveLearner(calibrated, query_strategy)
-
+        # select an instance using active learning to be labelled
+        learner = get_learner(model_name, query_strategy, X_selected, y_selected)
         query_idx, query_inst = learner.query(X_pool)
 
         clear_window()
 
-        print(f'{active_labelled.shape[0] + 1}/{number_queries} labelled in active-labelled.csv')
+        print('-' * 100)
+        print(f'ACTIVE LEARNING LABELLING ({active_labelled.shape[0] + 1}/{number_queries})')
+        print('-' * 100)
 
+        # asking specialist to label the instance
         row = pool.iloc[query_idx].squeeze()
         label = get_answer(row)
+
+        print('\nprocessing... it may take a while.')
 
         active_labelled = append_row(active_labelled, row, label)
         save_df(active_labelled_csv_path, active_labelled)
@@ -278,12 +293,11 @@ def active_learning_labelling(
 
         X_pool = np.delete(X_pool, query_idx, axis=0)
 
-        calibrated = CalibratedClassifierCV(base_stimator, method='isotonic', cv=5)
-        calibrated.fit(X_selected, y_selected)
+        # training a model to obtain metrics
+        learner = get_learner(model_name, query_strategy, X_selected, y_selected)
+        y_pred = learner.predict(X_test)
 
-        y_pred = calibrated.predict(X_test)
-
-        accuracy = calibrated.score(X_test, y_test)
+        accuracy = learner.score(X_test, y_test)
         precision = precision_score(y_test, y_pred, average='weighted')
         recall = recall_score(y_test, y_pred, average='weighted')
         f1 = f1_score(y_test, y_pred, average='weighted')
@@ -294,7 +308,7 @@ def active_learning_labelling(
 
         number = len(active_labelled)
         model_path = abs_results_path(f'{specialist_name}/models/active/model-{number}.pickle')
-        save_pickle_obj(model_path, calibrated)
+        save_pickle_obj(model_path, learner)
 
 
 def super_learning_labelling(
@@ -356,7 +370,9 @@ def super_learning_labelling(
 
         clear_window()
 
-        print(f'{super_labelled.shape[0] + 1}/{number_queries} labelled in super-labelled.csv')
+        print('-' * 100)
+        print(f'RANDOM LEARNING LABELLING ({super_labelled.shape[0] + 1}/{number_queries})')
+        print('-' * 100)
 
         row = pool.iloc[query_idx].squeeze()
         label = get_answer(row)

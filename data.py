@@ -247,9 +247,9 @@ def print_row(row):
     print('-' * 100)
 
     print(tabulate([
-        ['platform', 'vendor', 'base_score', 'base_severity',
+        ['platform', 'vendor', 'base_score',
          'cve_published_date', 'update_available'],
-        [row.part, row.vendor, row.base_score, row.base_severity,
+        [row.part, row.vendor, row.base_score,
          row.cve_published_date, row.update_available]
     ], headers='firstrow', tablefmt='rounded_outline'))
 
@@ -262,16 +262,17 @@ def print_row(row):
     print('-' * 100)
 
     print(tabulate([
-        ['mitre_top_25', 'owasp_top_10', 'epss', 'exploit_count',
-         'exploit_published_date', 'advisory_published_date'],
-        [row.mitre_top_25, row.owasp_top_10, row.epss, row.exploit_count,
-         row.exploit_published_date, row.advisory_published_date]
+        ['mitre_top_25', 'owasp_top_10', 'epss',
+         'exploit_count', 'exploit_published_date'],
+        [row.mitre_top_25, row.owasp_top_10, row.epss,
+         row.exploit_count, row.exploit_published_date]
     ], headers='firstrow', tablefmt='rounded_outline'))
 
     print(tabulate([
-        ['audience', 'audience_normalized', 'google_trend', 'google_interest', 'attack_type'],
-        [row.audience, row.audience_normalized, row.google_trend,
-         row.google_interest, row.attack_type]
+        ['advisory_published_date', 'audience',
+         'google_trend', 'google_interest', 'attack_type'],
+        [row.advisory_published_date, row.audience_normalized,
+         row.google_trend, row.google_interest, row.attack_type]
     ], headers='firstrow', tablefmt='rounded_outline'))
 
     print('\nContext Characteristics')
