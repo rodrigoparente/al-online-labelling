@@ -1,6 +1,7 @@
 __pycache__/
 build/
 dist/
+minified/
 *.spec
 .vscode/
 .ipynb_checkpoints
