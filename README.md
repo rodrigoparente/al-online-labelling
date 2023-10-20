@@ -9,9 +9,9 @@ The main objective of this program is to simulate the online labelling process o
 
 Those values can be configured editing the `main.py` file. The following images represent respectively the `starting screen` and `vulnerability labelling screen` of the program.
 
-<img src='al-online-program-initial.png' alt='Starting screen' width='60%'>
+<img src='al-online-program-initial.png' alt='Starting screen' width='70%'>
 
-<img src='al-online-program-example.png' alt='Vulnerability labelling screen' width='60%'>
+<img src='al-online-program-example.png' alt='Vulnerability labelling screen' width='70%'>
 
 For more information about the machine learning techniques tested and the vulnerability risk classification problem, read the paper: [A Vulnerability Risk Assessment Methodology Using Active Learning](https://link.springer.com/chapter/10.1007/978-3-031-28451-9_15), published at the international conference on Advanced Information Networking and Applications. Also, with you would like to know more about the security dataset used in the experiments, you can check the [CVEJoin Security Dataset](https://github.com/rodrigoparente/cvejoin-security-dataset) repository.
 
